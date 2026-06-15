@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="UTF-8">
+		<title>危险品表格分析</title>
+		<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+		<style>
+			body {
+				font-family: Arial, sans-serif;
+				padding: 20px;
+				background: #f9f9f9;
+			}
+
+			input,
+			button {
+				margin: 5px;
+				padding: 5px;
+			}
+
+			table {
+				border-collapse: collapse;
+				margin-top: 20px;
+				width: 100%;
+				background: #fff;
+				box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+			}
+
+			th,
+			td {
+				border: 1px solid #ccc;
+				padding: 8px;
+				text-align: center;
+				min-width: 50px;
+				max-width: 300px;
+				word-wrap: break-word;
+				word-break: break-word;
+			}
+
+			th {
+				background: #f0f0f0;
+			}
+
+			.copy-btn {
+				cursor: pointer;
+				padding: 2px 6px;
+				margin-top: 4px;
+				background: #4CAF50;
+				color: white;
+				border: none;
+				border-radius: 4px;
+				white-space: nowrap;
+			}
+
+			.copy-btn:hover {
+				background: #45a049;
+			}
+
+			.data-cell {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				white-space: normal;
+			}
+
+			.packing-btn {
+				padding: 5px 12px;
+				margin-right: 5px;
+				border: 1px solid #ccc;
+				border-radius: 4px;
+				cursor: pointer;
+			}
+
+			.packing-btn.selected {
+				background: #4CAF50;
+				color: white;
+			}
+
+			@keyframes flashCell {
+				0% {
+					background-color: yellow;
+				}
+
+				50% {
+					background-color: white;
+				}
+
+				100% {
+					background-color: yellow;
+				}
+			}
+
+			.flash-cell {
+				animation: flashCell 0.5s ease-in-out;
+			}
+
+			.separator {
+				border: 2px solid #FF6600;
+				margin: 10px 0;
+				background-color: antiquewhite;
+			}
+
+			.red-volume {
+				color: white;
+				background-color: red;
+				padding: 0 4px;
+				border-radius: 2px;
+				display: inline-block;
+				margin-left: 5px;
+			}
+		</style>
+	</head>
+	<body>
+
+
+		<div id="packageCalculatorWrapper">
+			<div class="package-calculator"></div>
+			<div class="package-calculator"></div>
+			<div class="package-calculator"></div>
+			<div class="package-calculator"></div>
+			<div class="package-calculator"></div>
+		</div>
+		<input type="file" id="fileInput" accept=".xlsx,.xls">
+		<br>
+
+		<label>Un No.: <input type="text" id="unNo"></label>
+		<label>Packing Group:</label>
+		<button class="packing-btn" onclick="togglePacking(this)">I</button>
+		<button class="packing-btn" onclick="togglePacking(this)">II</button>
+		<button class="packing-btn" onclick="togglePacking(this)">III</button>
+		<button onclick="searchData()">查询</button>
+
+		<!-- 总体积和货物重量输入框 -->
+		<div id="cargoContainer" style="margin-top:10px; display:contents; align-items:center;">
+		</div>
+		<div style="margin-top:5px; display: contents;">
+			<button id="addCargo">+</button>
+			<button id="removeCargo">-</button>
+		</div>
+
+		<script>
+			let instanceCounter = 0;
+
+			function createPackageCalculator(container) {
+				instanceCounter++;
+				const prefix = 'pc' + instanceCounter + '-';
+
+				container.innerHTML = `
+		        <style>
+		            /* 卡片样式 */
+		            .package-calculator {
+		                font-family: Arial, sans-serif;
+		                padding: 10px;
+		                background-color: #f4f4f4;
+		                border-radius: 8px;
+						
+		                max-width: 500px;
+		                margin: 10px;
+		                position: relative;
+						display: inline-block;
+		            }
+		            .package-calculator .section {
+		                margin-bottom: 10px;
+		                padding: 10px;
+		                background-color: #fff;
+		                border-radius: 8px;
+		            }
+		            .package-calculator .inline-group {
+		                display: flex;
+		                flex-wrap: wrap;
+		                gap: 5px;
+		                margin-bottom: 10px;
+						font:initial;
+		            }
+		            .package-calculator .inline-group label {
+		                cursor: pointer;
+		                padding: 5px 10px;
+		                border: 1px solid #ccc;
+		                border-radius: 5px;
+		            }
+		            .package-calculator .inline-group input[type="radio"] {
+		                display: none;
+		            }
+		            .package-calculator .inline-group input[type="radio"]:checked + label {
+		                background-color: #007bff;
+		                color: white;
+		                border-color: #007bff;
+		            }
+		            .package-calculator .input-row {
+		                display: flex;
+		                flex-wrap: wrap;
+		                align-items: center;
+		                gap: 10px;
+		                margin-bottom: 10px;
+		            }
+		            .package-calculator input[type="number"] {
+		                width: 60px;
+		                padding: 3px;
+		                -moz-appearance: textfield; /* Firefox 去掉箭头 */
+		            }
+		            /* Chrome, Edge, Safari 去掉箭头 */
+		            .package-calculator input[type="number"]::-webkit-outer-spin-button,
+		            .package-calculator input[type="number"]::-webkit-inner-spin-button {
+		                -webkit-appearance: none;
+		                margin: 0;
+		            }
+		            .package-calculator .result {
+		                font-weight: bold;
+		                font-size: 12px;
+		                color: #d9534f;
+		                margin-left: 10px;
+		            
+		                max-width: 180px;      /* 限制宽度 */
+		                word-break: break-word;
+		                white-space: normal;
+		            
+		                line-height: 1.4;
+		            
+		                display: flex;
+		                flex-direction: column;
+		            }
+		            .package-calculator .reset-btn {
+		                position: absolute;
+		                bottom: 10px;
+		                right: 10px;
+		                padding: 5px 10px;
+		                background-color: #dc3545;
+		                color: white;
+		                border: none;
+		                border-radius: 5px;
+		                cursor: pointer;
+		            }
+		            @media (max-width: 480px) {
+		                .package-calculator {
+		                    max-width: 100%;
+		                }
+		                .package-calculator .input-row {
+		                    flex-direction: column;
+		                    align-items: flex-start;
+		                }
+		            }
+		        </style>
+		
+		        <div class="section inline-group">
+		            <input type="radio" id="${prefix}status-solid" name="${prefix}status" value="固">
+		            <label for="${prefix}status-solid">固</label>
+		            <input type="radio" id="${prefix}status-liquid" name="${prefix}status" value="液">
+		            <label for="${prefix}status-liquid">液</label>
+		
+		            <input type="radio" id="${prefix}unit-bags" name="${prefix}unit" value="BAGS">
+		            <label for="${prefix}unit-bags">BAGS</label>
+		            <input type="radio" id="${prefix}unit-cartons" name="${prefix}unit" value="CARTONS">
+		            <label for="${prefix}unit-cartons">CARTONS</label>
+		            <input type="radio" id="${prefix}unit-drums" name="${prefix}unit" value="DRUMS">
+		            <label for="${prefix}unit-drums">DRUMS</label>
+		        </div>
+		
+		        <div class="section">
+		            <div class="input-row">
+		                <label>总数量:</label>
+		                <input type="number" class="quantity" min="1" step="1">
+		                <div class="result"></div>
+		            </div>
+		            <div class="input-row">
+		                <label>总毛重:</label>
+		                <input type="number" class="totalWeight" min="0" step="0.01">
+		                <label>单毛重:</label>
+		                <input type="number" class="singleWeight" min="0" step="0.01">
+		            </div>
+		            <div class="input-row">
+		                <label>总净重:</label>
+		                <input type="number" class="totalNet" min="0" step="0.01">
+		                <label>单净重:</label>
+		                <input type="number" class="singleNet" min="0" step="0.01">
+		            </div>
+		        </div>
+		
+		        <button class="reset-btn">重置</button>
+		        `;
+
+				let isUpdating = false;
+
+				function updateWeightsAndCode(changedEl) {
+					if (isUpdating) return;
+					isUpdating = true;
+
+					const status = container.querySelector(`input[name="${prefix}status"]:checked`)?.value;
+					const unit = container.querySelector(`input[name="${prefix}unit"]:checked`)?.value;
+					const quantity = parseFloat(container.querySelector('.quantity').value);
+
+					let totalWeight = parseFloat(container.querySelector('.totalWeight').value);
+					let singleWeight = parseFloat(container.querySelector('.singleWeight').value);
+					let totalNet = parseFloat(container.querySelector('.totalNet').value);
+					let singleNet = parseFloat(container.querySelector('.singleNet').value);
+
+					if (!isNaN(quantity) && quantity > 0) {
+						if (changedEl === container.querySelector('.totalWeight') || changedEl === container
+							.querySelector('.quantity')) {
+							if (!isNaN(totalWeight)) singleWeight = totalWeight / quantity;
+							container.querySelector('.singleWeight').value = isNaN(singleWeight) ? '' : singleWeight
+								.toFixed(2);
+						} else if (changedEl === container.querySelector('.singleWeight')) {
+							if (!isNaN(singleWeight)) totalWeight = singleWeight * quantity;
+							container.querySelector('.totalWeight').value = isNaN(totalWeight) ? '' : totalWeight
+								.toFixed(2);
+						}
+
+						if (changedEl === container.querySelector('.totalNet') || changedEl === container.querySelector(
+								'.quantity')) {
+							if (!isNaN(totalNet)) singleNet = totalNet / quantity;
+							container.querySelector('.singleNet').value = isNaN(singleNet) ? '' : singleNet.toFixed(2);
+						} else if (changedEl === container.querySelector('.singleNet')) {
+							if (!isNaN(singleNet)) totalNet = singleNet * quantity;
+							container.querySelector('.totalNet').value = isNaN(totalNet) ? '' : totalNet.toFixed(2);
+						}
+					}
+
+					let codes = [];
+
+					if (unit && status && !isNaN(singleWeight)) {
+
+						// BAGS
+						if (unit === 'BAGS' && status === '固' && singleWeight >= 20 && singleWeight <= 30) {
+							codes.push('5H3-塑料编织袋');
+							codes.push('5M2-纸塑复合袋');
+						}
+
+						if (unit === 'BAGS' && status === '固' && singleWeight >= 100 && singleWeight <= 1500) {
+							codes.push('13H4/13H3/13H2-集装袋');
+						}
+
+						// CARTONS
+						if (
+							unit === 'CARTONS' &&
+							(status === '固' || status === '液') &&
+							singleWeight <= 40
+						) {
+							codes.push('4G-纸箱');
+						}
+
+						// DRUMS
+						if (
+							unit === 'DRUMS' &&
+							status === '固' &&
+							singleWeight <= 55
+						) {
+							codes.push('1G-纸板桶');
+						}
+
+						if (
+							unit === 'DRUMS' &&
+							(status === '固' || status === '液') &&
+							singleWeight >= 100 &&
+							singleWeight <= 300
+						) {
+							codes.push('1A1-闭口钢桶 200L/DRUM');
+							codes.push('1H1-闭口塑料桶 200L/DRUM');
+						}
+
+						if (
+							unit === 'DRUMS' &&
+							status === '液' &&
+							singleWeight >= 14 &&
+							singleWeight <= 38
+						) {
+							codes.push('3H1-小罐子 20L/DRUM');
+						}
+
+						if (
+							unit === 'DRUMS' &&
+							(status === '固' || status === '液') &&
+							singleWeight >= 20 &&
+							singleWeight <= 100
+						) {
+							codes.push('1A2-开口钢铜 200L/DRUM');
+						}
+
+						if (
+							unit === 'DRUMS' &&
+							(status === '固' || status === '液') &&
+							singleWeight >= 100 &&
+							singleWeight <= 1500
+						) {
+							codes.push('31HA1-船级社 1000L/DRUM');
+						}
+					}
+
+					const result = codes.length ?
+						[...new Set(codes)].join('\n') :
+						'无匹配包装代码';
+
+					container.querySelector('.result').innerHTML =
+						result.replace(/\n/g, '<br>');
+
+					// 总净重联动货物重量
+					if (
+						changedEl === container.querySelector('.totalNet') ||
+						changedEl === container.querySelector('.singleNet') ||
+						changedEl === container.querySelector('.quantity')
+					) {
+
+						const cardIndex = Array.from(
+							document.querySelectorAll('.package-calculator')
+						).indexOf(container);
+
+						const cargoInputs = document.querySelectorAll('.cargoWeight');
+
+						if (cargoInputs[cardIndex]) {
+
+							cargoInputs[cardIndex].value =
+								isNaN(totalNet) ? '' : totalNet.toFixed(2);
+
+							// 重新触发体积计算
+							cargoInputs[cardIndex].dispatchEvent(
+								new Event('input')
+							);
+						}
+					}
+
+					isUpdating = false;
+				}
+
+				container.querySelectorAll('.quantity, .totalWeight, .singleWeight, .totalNet, .singleNet').forEach(
+					el => {
+						el.addEventListener('input', () => updateWeightsAndCode(el));
+					});
+
+				container.querySelectorAll(`input[name="${prefix}unit"], input[name="${prefix}status"]`).forEach(el => {
+					el.addEventListener('change', () => updateWeightsAndCode(null));
+				});
+
+				// 重置按钮
+				container.querySelector('.reset-btn').addEventListener('click', () => {
+
+					// 清空卡片输入
+					container.querySelectorAll('input[type="number"]')
+						.forEach(input => input.value = '');
+
+					container.querySelectorAll(
+						`input[name="${prefix}status"], input[name="${prefix}unit"]`
+					).forEach(input => input.checked = false);
+
+					container.querySelector('.result').textContent = '';
+
+					// ===== 新增：同步清空货物重量 =====
+
+					const cardIndex = Array.from(
+						document.querySelectorAll('.package-calculator')
+					).indexOf(container);
+
+					const cargoInputs = document.querySelectorAll('.cargoWeight');
+
+					if (cargoInputs[cardIndex]) {
+
+						cargoInputs[cardIndex].value = '';
+
+						// 触发重新计算体积
+						cargoInputs[cardIndex].dispatchEvent(
+							new Event('input')
+						);
+					}
+				});
+			}
+
+			document.querySelectorAll('.package-calculator').forEach(container => {
+				createPackageCalculator(container);
+			});
+		</script>
+
+		<table id="resultTable">
+			<thead id="tableHead"></thead>
+			<tbody id="tableBody"></tbody>
+		</table>
+
+		<script>
+			let allData = [];
+			let selectedPacking = "";
+			let searchHistory = [];
+
+			// 上传 Excel 文件
+			document.getElementById('fileInput').addEventListener('change', handleFile, false);
+
+			function handleFile(e) {
+				const file = e.target.files[0];
+				if (!file) return;
+				const reader = new FileReader();
+				reader.onload = function(event) {
+					const data = new Uint8Array(event.target.result);
+					const workbook = XLSX.read(data, {
+						type: 'array'
+					});
+					const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+					allData = XLSX.utils.sheet_to_json(firstSheet, {
+						defval: ""
+					});
+					renderTableHead();
+					alert("Excel 文件加载成功，共 " + allData.length + " 行数据。");
+				};
+				reader.readAsArrayBuffer(file);
+			}
+
+			// 渲染表头
+			function renderTableHead() {
+				const tableHead = document.getElementById('tableHead');
+				tableHead.innerHTML = "";
+				if (allData.length === 0) return;
+				const tr = document.createElement('tr');
+				const keys = Object.keys(allData[0]);
+				keys.forEach(key => {
+					const th = document.createElement('th');
+					th.innerText = key;
+					tr.appendChild(th);
+				});
+				tableHead.appendChild(tr);
+			}
+
+			// Packing Group 按钮
+			function togglePacking(btn) {
+				if (btn.classList.contains('selected')) {
+					btn.classList.remove('selected');
+					selectedPacking = "";
+				} else {
+					document.querySelectorAll('.packing-btn').forEach(b => b.classList.remove('selected'));
+					btn.classList.add('selected');
+					selectedPacking = btn.innerText;
+				}
+			}
+
+			// 查询数据
+			function searchData() {
+				const unNo = document.getElementById('unNo').value.trim();
+				if (!unNo) return;
+
+				const results = allData.filter(row =>
+					row["Un No."] == unNo && (selectedPacking === "" || row["Packing Group"] == selectedPacking)
+				);
+
+				if (results.length === 0) return;
+
+				searchHistory.unshift(results.map(r => ({
+					...r
+				})));
+				if (searchHistory.length > 5) searchHistory.pop();
+
+				renderResults();
+				resetPacking();
+			}
+
+			// 渲染所有搜索结果（历史+当前）
+			function renderResults() {
+				const tbody = document.getElementById('tableBody');
+				tbody.innerHTML = "";
+
+				searchHistory.forEach((resultSet, index) => {
+					if (index > 0) {
+						const sepRow = document.createElement('tr');
+						const sepTd = document.createElement('td');
+						sepTd.colSpan = Object.keys(resultSet[0]).length;
+						sepTd.className = "separator";
+						sepRow.appendChild(sepTd);
+						tbody.appendChild(sepRow);
+					}
+
+					resultSet.forEach(row => {
+						const tr = document.createElement('tr');
+						const keys = Object.keys(row);
+						keys.forEach((key, idx) => {
+							const val = row[key];
+							const td = document.createElement('td');
+							const div = document.createElement('div');
+							div.className = 'data-cell';
+							div.style.display = 'flex';
+							div.style.justifyContent = 'center';
+							div.style.alignItems = 'center';
+							const span = document.createElement('span');
+							span.innerText = val;
+							div.appendChild(span);
+
+							if (val !== null && val.trim() !== "" && idx !== keys.length - 1) {
+								const btn = document.createElement('button');
+								btn.className = 'copy-btn';
+								btn.innerText = '复制';
+								btn.onclick = () => {
+									navigator.clipboard.writeText(val).then(() => {
+										td.classList.add('flash-cell');
+										setTimeout(() => td.classList.remove('flash-cell'),
+											500);
+									});
+								};
+								div.appendChild(btn);
+							}
+
+							td.appendChild(div);
+							tr.appendChild(td);
+						});
+						tbody.appendChild(tr);
+					});
+				});
+			}
+
+			// 重置Packing Group
+			function resetPacking() {
+				selectedPacking = "";
+				document.querySelectorAll('.packing-btn').forEach(b => b.classList.remove('selected'));
+			}
+
+			// 回车触发查询
+			document.getElementById('unNo').addEventListener('keydown', function(event) {
+				if (event.key === "Enter") searchData();
+			});
+
+			// Un No 长度为4自动查询
+			document.getElementById('unNo').addEventListener('input', function(event) {
+				const val = event.target.value.trim();
+				if (val.length === 4) searchData();
+			});
+
+			// === 货物体积计算模块（仅优化增加/删除不影响已有数据） ===
+			let cargoCount = 5;
+			const cargoContainer = document.getElementById('cargoContainer');
+			let cargoData = []; // 保存重量和体积
+
+			function createCargoInput(index) {
+				const weight = cargoData[index]?.weight || '';
+				const volume = cargoData[index]?.volume || '';
+				const label = document.createElement('label');
+				label.style.marginRight = '10px';
+				label.innerHTML = `货物${index+1}: <input type="text" class="cargoWeight" style="width:50px;" value="${weight}" placeholder="重量"> 
+                       <span class="red-volume">${volume}</span>`;
+				return label;
+			}
+
+			function renderCargoInputs() {
+				// 保存总输入数据
+				const totalVolumeInput = document.getElementById('totalVolume');
+				const totalVolume = totalVolumeInput ? totalVolumeInput.value : '';
+
+				cargoContainer.innerHTML = `
+				<label style="margin-right:10px;">
+				    柜型:
+				    <select id="containerType" style="
+				        width:120px;
+				        height:26px;
+				        padding:2px 4px;
+				        border:1px solid #ccc;
+				        border-radius:2px;
+				        vertical-align:middle;
+				    ">
+				        <option value="">手动填写</option>
+				        <option value="26">20GP / 26CBM</option>
+				        <option value="50">40GP / 50CBM</option>
+				        <option value="60">40HQ / 60CBM</option>
+				    </select>
+				</label>
+				
+				<label style="margin-right:10px;">
+				    总体积:
+				    <input type="text" id="totalVolume" placeholder="总体积" style="
+				        width:60px;
+				        height:26px;
+				        padding:2px 4px;
+				        border:1px solid #ccc;
+				        border-radius:2px;
+				        vertical-align:middle;
+				    " value="${totalVolume}">
+				</label>
+				`;
+
+				for (let i = 0; i < cargoCount; i++) {
+					if (!cargoData[i]) cargoData[i] = {
+						weight: '',
+						volume: ''
+					};
+					const label = createCargoInput(i);
+					cargoContainer.appendChild(label);
+				}
+
+				bindCargoEvents();
+			}
+
+			function bindCargoEvents() {
+			
+			    const totalVolumeInput = document.getElementById('totalVolume');
+			
+			    // 新增：柜型选择
+			    const containerType = document.getElementById('containerType');
+			
+			    const cargoWeights = Array.from(
+			        cargoContainer.querySelectorAll('.cargoWeight')
+			    );
+			
+			    const volSpans = Array.from(
+			        cargoContainer.querySelectorAll('.red-volume')
+			    );
+			
+			    // 体积计算
+			    function calculateVolumes() {
+			
+			        const totalVolume =
+			            parseFloat(totalVolumeInput.value) || 0;
+			
+			        const weights = cargoWeights.map(
+			            input => parseFloat(input.value) || 0
+			        );
+			
+			        const totalWeight =
+			            weights.reduce((a, b) => a + b, 0);
+			
+			        weights.forEach((w, i) => {
+			
+			            if (totalVolume > 0 && totalWeight > 0) {
+			
+			                const actualVolume =
+			                    (w / totalWeight) * totalVolume;
+			
+			                volSpans[i].innerText =
+			                    actualVolume.toFixed(2);
+			
+			                cargoData[i].weight =
+			                    cargoWeights[i].value;
+			
+			                cargoData[i].volume =
+			                    actualVolume.toFixed(2);
+			
+			            } else {
+			
+			                volSpans[i].innerText = '';
+			
+			                cargoData[i].weight =
+			                    cargoWeights[i].value;
+			
+			                cargoData[i].volume = '';
+			            }
+			        });
+			    }
+			
+			    // 总体积手动输入
+			    totalVolumeInput.addEventListener(
+			        'input',
+			        calculateVolumes
+			    );
+			
+			    // 重量输入
+			    cargoWeights.forEach(input => {
+			
+			        input.addEventListener(
+			            'input',
+			            calculateVolumes
+			        );
+			    });
+			
+			    // 新增：柜型选择自动填充体积
+			    if (containerType) {
+			
+			        containerType.addEventListener('change', function () {
+			
+			            if (this.value) {
+			
+			                totalVolumeInput.value = this.value;
+			
+			            } else {
+			
+			                // 选择“手动填写”时清空
+			                totalVolumeInput.value = '';
+			            }
+			
+			            calculateVolumes();
+			        });
+			    }
+			
+			    calculateVolumes();
+			}
+
+			// 初始化
+			for (let i = 0; i < cargoCount; i++) cargoData.push({
+				weight: '',
+				volume: ''
+			});
+			renderCargoInputs();
+
+			// 同步卡片数量
+			function syncPackageCalculators() {
+
+				const wrapper = document.getElementById(
+					'packageCalculatorWrapper'
+				);
+
+				// 当前卡片数量
+				let currentCount =
+					wrapper.querySelectorAll('.package-calculator').length;
+
+				// 增加卡片
+				while (currentCount < cargoCount) {
+
+					const div = document.createElement('div');
+
+					div.className = 'package-calculator';
+
+					wrapper.appendChild(div);
+
+					// 创建新卡片
+					createPackageCalculator(div);
+
+					currentCount++;
+				}
+
+				// 删除卡片
+				while (currentCount > cargoCount) {
+
+					wrapper.lastElementChild.remove();
+
+					currentCount--;
+				}
+			}
+
+			// 增加
+			document.getElementById('addCargo').addEventListener('click', () => {
+
+				cargoCount++;
+
+				cargoData.push({
+					weight: '',
+					volume: ''
+				});
+
+				renderCargoInputs();
+
+				syncPackageCalculators();
+			});
+
+			// 删除
+			document.getElementById('removeCargo').addEventListener('click', () => {
+
+				if (cargoCount > 1) {
+
+					cargoCount--;
+
+					cargoData.pop();
+
+					renderCargoInputs();
+
+					syncPackageCalculators();
+				}
+			});
+		</script>
+
+	</body>
+</html>
