@@ -51,33 +51,8 @@
 				white-space: nowrap;
 			}
 
-			
-
-			.btn-row {
-				display: flex;
-				align-items: center;
-				justify-content: center;
-				margin-top: 4px;
-			}
-
 			.copy-btn:hover {
 				background: #45a049;
-			}
-			.copy-btn.state-solid {
-			    background-color: #808080;
-			}
-			
-			.copy-btn.state-liquid {
-			    background-color: #87CEFA;
-			}
-			.copy-btn.state-isolate {
-			    background-color: #FFD700;
-			    color: black;
-			}
-			
-			.copy-btn:disabled {
-			    opacity: 1;
-			    cursor: default;
 			}
 
 			.data-cell {
@@ -148,6 +123,11 @@
 		<br>
 
 		<label>Un No.: <input type="text" id="unNo"></label>
+		<label>Packing Group:</label>
+		<button class="packing-btn" onclick="togglePacking(this)">I</button>
+		<button class="packing-btn" onclick="togglePacking(this)">II</button>
+		<button class="packing-btn" onclick="togglePacking(this)">III</button>
+		<button onclick="searchData()">查询</button>
 
 		<!-- 总体积和货物重量输入框 -->
 		<div id="cargoContainer" style="margin-top:10px; display:contents; align-items:center;">
@@ -299,18 +279,6 @@
 
 				let isUpdating = false;
 				let allData = [];
-				function createTagButton(text, className) {
-				
-				    const btn = document.createElement('button');
-				
-				    btn.className = `copy-btn ${className}`;
-				
-				    btn.innerText = text;
-				
-				    btn.disabled = true;
-				
-				    return btn;
-				}
 
 				function updateWeightsAndCode(changedEl) {
 					if (isUpdating) return;
@@ -505,6 +473,7 @@
 
 		<script>
 			let allData = [];
+			let selectedPacking = "";
 			let searchHistory = [];
 			// 手动上传 Excel
 			function handleFile(e) {
@@ -537,10 +506,7 @@
 							firstSheet, {
 								defval: ""
 							}
-						).map(row => ({
-							...row,
-							"Un No.": String(row["Un No."]).trim().padStart(4, '0')
-						}));
+						);
 
 					renderTableHead();
 
@@ -596,10 +562,7 @@
 							firstSheet, {
 								defval: ""
 							}
-						).map(row => ({
-							...row,
-							"Un No.": String(row["Un No."]).trim().padStart(4, '0')
-						}));
+						);
 
 					// 没有数据
 					if (
@@ -661,54 +624,36 @@
 				tableHead.appendChild(tr);
 			}
 
+			// Packing Group 按钮
+			function togglePacking(btn) {
+				if (btn.classList.contains('selected')) {
+					btn.classList.remove('selected');
+					selectedPacking = "";
+				} else {
+					document.querySelectorAll('.packing-btn').forEach(b => b.classList.remove('selected'));
+					btn.classList.add('selected');
+					selectedPacking = btn.innerText;
+				}
+			}
+
 			// 查询数据
 			function searchData() {
-
-				const unInput = document.getElementById('unNo');
-
-				const unNo = unInput.value
-					.trim()
-					.padStart(4, '0');
-
+				const unNo = document.getElementById('unNo').value.trim();
 				if (!unNo) return;
 
 				const results = allData.filter(row =>
-					row["Un No."] === unNo
+					row["Un No."] == unNo && (selectedPacking === "" || row["Packing Group"] == selectedPacking)
 				);
 
-				// 查询失败
-				if (results.length === 0) {
-
-					const unInput = document.getElementById('unNo');
-
-					unInput.style.backgroundColor = '#ff4040';
-
-					setTimeout(() => {
-
-						unInput.style.backgroundColor = '';
-
-						unInput.value = '';
-
-						unInput.focus();
-
-					}, 800);
-
-					return;
-				}
+				if (results.length === 0) return;
 
 				searchHistory.unshift(results.map(r => ({
 					...r
 				})));
-
-				if (searchHistory.length > 5) {
-					searchHistory.pop();
-				}
+				if (searchHistory.length > 5) searchHistory.pop();
 
 				renderResults();
-
-				unInput.value = '';
-
-				unInput.focus();
+				resetPacking();
 			}
 
 			// 渲染所有搜索结果（历史+当前）
@@ -742,11 +687,9 @@
 							div.appendChild(span);
 
 							if (val !== null && val.trim() !== "" && idx !== keys.length - 1) {
-
 								const btn = document.createElement('button');
 								btn.className = 'copy-btn';
 								btn.innerText = '复制';
-
 								btn.onclick = () => {
 									navigator.clipboard.writeText(val).then(() => {
 										td.classList.add('flash-cell');
@@ -754,93 +697,7 @@
 											500);
 									});
 								};
-
-								const btnRow = document.createElement('div');
-								btnRow.className = 'btn-row';
-
-								btnRow.appendChild(btn);
-
-								// Proper Shipping Name 显示状态标签
-								if (key === "Proper Shipping Name") {
-								
-								    const tags = [];
-								
-								    const upperVal = String(val).toUpperCase();
-								
-								    // 固体/液体判断
-								    if (upperVal.includes('SOLID')) {
-								
-								        tags.push({
-								            text: '固体',
-								            className: 'state-solid'
-								        });
-								
-								    } else if (upperVal.includes('LIQUID')) {
-								
-								        tags.push({
-								            text: '液体',
-								            className: 'state-liquid'
-								        });
-								
-								    } else {
-								
-								        const limitedQty =
-								            String(row["Limited Quantities"] || '')
-								            .toUpperCase()
-								            .replace(/\s/g, '');
-								
-								        if (
-								            limitedQty.includes('ML') ||
-								            limitedQty.endsWith('L')
-								        ) {
-								
-								            tags.push({
-								                text: '液体',
-								                className: 'state-liquid'
-								            });
-								
-								        } else if (
-								            limitedQty.includes('KG') ||
-								            limitedQty.endsWith('G')
-								        ) {
-								
-								            tags.push({
-								                text: '固体',
-								                className: 'state-solid'
-								            });
-								        }
-								    }
-								
-								    // 隔离判断
-								    if (
-								        String(row["Class"] || '').trim() === '8' &&
-								        String(row["Secondary Risk"] || '').includes('6.1')
-								    ) {
-								
-								        tags.push({
-								            text: '隔离',
-								            className: 'state-isolate'
-								        });
-								    }
-								
-								    // 统一生成按钮
-								    tags.forEach(tagInfo => {
-								
-								        const tagBtn = document.createElement('button');
-								
-								        tagBtn.className =
-								            `copy-btn ${tagInfo.className}`;
-								
-								        tagBtn.innerText =
-								            tagInfo.text;
-								
-								        tagBtn.disabled = true;
-								
-								        btnRow.appendChild(tagBtn);
-								    });
-								}
-
-								div.appendChild(btnRow);
+								div.appendChild(btn);
 							}
 
 							td.appendChild(div);
@@ -851,7 +708,11 @@
 				});
 			}
 
-
+			// 重置Packing Group
+			function resetPacking() {
+				selectedPacking = "";
+				document.querySelectorAll('.packing-btn').forEach(b => b.classList.remove('selected'));
+			}
 
 			// 回车触发查询
 			document.getElementById('unNo').addEventListener('keydown', function(event) {
@@ -861,10 +722,7 @@
 			// Un No 长度为4自动查询
 			document.getElementById('unNo').addEventListener('input', function(event) {
 				const val = event.target.value.trim();
-
-				if (/^\d{4}$/.test(val)) {
-					searchData();
-				}
+				if (val.length === 4) searchData();
 			});
 
 			// === 货物体积计算模块（仅优化增加/删除不影响已有数据） ===
