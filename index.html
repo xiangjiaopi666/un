@@ -813,12 +813,11 @@
 								
 								    // 隔离判断
 								    if (
-								        String(row["Class"] || '').trim() === '8' &&
-								        String(row["Secondary Risk"] || '').includes('6.1')
+								        String(row["Class"] || '').trim() === '8' 
 								    ) {
 								
 								        tags.push({
-								            text: '隔离',
+								            text: '隔离，不能用【1A1】等金属包装',
 								            className: 'state-isolate'
 								        });
 								    }
