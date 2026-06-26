@@ -871,9 +871,8 @@
 					initNoteContainer();
 					// 默认选择第一个
 					if (noteData.length > 0) {
-						document.getElementById("noteInput").value =
-							noteData[0].name + " " + noteData[0]["chinese-name"];
-						showNote();
+					    // 不给输入框赋值，只显示默认提醒
+					    showNote();
 					}
 
 				} catch (e) {
