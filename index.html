@@ -51,7 +51,7 @@
 				white-space: nowrap;
 			}
 
-			
+
 
 			.btn-row {
 				display: flex;
@@ -63,21 +63,23 @@
 			.copy-btn:hover {
 				background: #45a049;
 			}
+
 			.copy-btn.state-solid {
-			    background-color: #808080;
+				background-color: #808080;
 			}
-			
+
 			.copy-btn.state-liquid {
-			    background-color: #87CEFA;
+				background-color: #87CEFA;
 			}
+
 			.copy-btn.state-isolate {
-			    background-color: #FFD700;
-			    color: black;
+				background-color: #FFD700;
+				color: black;
 			}
-			
+
 			.copy-btn:disabled {
-			    opacity: 1;
-			    cursor: default;
+				opacity: 1;
+				cursor: default;
 			}
 
 			.data-cell {
@@ -144,6 +146,7 @@
 			<div class="package-calculator"></div>
 			<div class="package-calculator"></div>
 		</div>
+		<div id="noteContainer"></div>
 		<input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none;">
 		<br>
 
@@ -299,17 +302,18 @@
 
 				let isUpdating = false;
 				let allData = [];
+
 				function createTagButton(text, className) {
-				
-				    const btn = document.createElement('button');
-				
-				    btn.className = `copy-btn ${className}`;
-				
-				    btn.innerText = text;
-				
-				    btn.disabled = true;
-				
-				    return btn;
+
+					const btn = document.createElement('button');
+
+					btn.className = `copy-btn ${className}`;
+
+					btn.innerText = text;
+
+					btn.disabled = true;
+
+					return btn;
 				}
 
 				function updateWeightsAndCode(changedEl) {
@@ -395,7 +399,7 @@
 							singleWeight >= 14 &&
 							singleWeight <= 38
 						) {
-							codes.push('3H1-小罐子 20L/DRUM');
+							codes.push('3H1-小桶 20L/DRUM');
 						}
 
 						if (
@@ -506,6 +510,7 @@
 		<script>
 			let allData = [];
 			let searchHistory = [];
+			let noteData = [];
 			// 手动上传 Excel
 			function handleFile(e) {
 
@@ -762,81 +767,81 @@
 
 								// Proper Shipping Name 显示状态标签
 								if (key === "Proper Shipping Name") {
-								
-								    const tags = [];
-								
-								    const upperVal = String(val).toUpperCase();
-								
-								    // 固体/液体判断
-								    if (upperVal.includes('SOLID')) {
-								
-								        tags.push({
-								            text: '固体',
-								            className: 'state-solid'
-								        });
-								
-								    } else if (upperVal.includes('LIQUID')) {
-								
-								        tags.push({
-								            text: '液体',
-								            className: 'state-liquid'
-								        });
-								
-								    } else {
-								
-								        const limitedQty =
-								            String(row["Limited Quantities"] || '')
-								            .toUpperCase()
-								            .replace(/\s/g, '');
-								
-								        if (
-								            limitedQty.includes('ML') ||
-								            limitedQty.endsWith('L')
-								        ) {
-								
-								            tags.push({
-								                text: '液体',
-								                className: 'state-liquid'
-								            });
-								
-								        } else if (
-								            limitedQty.includes('KG') ||
-								            limitedQty.endsWith('G')
-								        ) {
-								
-								            tags.push({
-								                text: '固体',
-								                className: 'state-solid'
-								            });
-								        }
-								    }
-								
-								    // 隔离判断
-								    if (
-								        String(row["Class"] || '').trim() === '8' 
-								    ) {
-								
-								        tags.push({
-								            text: '隔离，不能用【1A1】等金属包装',
-								            className: 'state-isolate'
-								        });
-								    }
-								
-								    // 统一生成按钮
-								    tags.forEach(tagInfo => {
-								
-								        const tagBtn = document.createElement('button');
-								
-								        tagBtn.className =
-								            `copy-btn ${tagInfo.className}`;
-								
-								        tagBtn.innerText =
-								            tagInfo.text;
-								
-								        tagBtn.disabled = true;
-								
-								        btnRow.appendChild(tagBtn);
-								    });
+
+									const tags = [];
+
+									const upperVal = String(val).toUpperCase();
+
+									// 固体/液体判断
+									if (upperVal.includes('SOLID')) {
+
+										tags.push({
+											text: '固体',
+											className: 'state-solid'
+										});
+
+									} else if (upperVal.includes('LIQUID')) {
+
+										tags.push({
+											text: '液体',
+											className: 'state-liquid'
+										});
+
+									} else {
+
+										const limitedQty =
+											String(row["Limited Quantities"] || '')
+											.toUpperCase()
+											.replace(/\s/g, '');
+
+										if (
+											limitedQty.includes('ML') ||
+											limitedQty.endsWith('L')
+										) {
+
+											tags.push({
+												text: '液体',
+												className: 'state-liquid'
+											});
+
+										} else if (
+											limitedQty.includes('KG') ||
+											limitedQty.endsWith('G')
+										) {
+
+											tags.push({
+												text: '固体',
+												className: 'state-solid'
+											});
+										}
+									}
+
+									// 隔离判断
+									if (
+										String(row["Class"] || '').trim() === '8'
+									) {
+
+										tags.push({
+											text: '隔离，不能用【1A1】等金属包装',
+											className: 'state-isolate'
+										});
+									}
+
+									// 统一生成按钮
+									tags.forEach(tagInfo => {
+
+										const tagBtn = document.createElement('button');
+
+										tagBtn.className =
+											`copy-btn ${tagInfo.className}`;
+
+										tagBtn.innerText =
+											tagInfo.text;
+
+										tagBtn.disabled = true;
+
+										btnRow.appendChild(tagBtn);
+									});
 								}
 
 								div.appendChild(btnRow);
@@ -848,6 +853,220 @@
 						tbody.appendChild(tr);
 					});
 				});
+			}
+			async function loadNoteData() {
+
+				try {
+
+					const response = await fetch("./note.json");
+
+					if (!response.ok) {
+						throw new Error("HTTP " + response.status);
+					}
+
+					noteData = await response.json();
+
+					console.log(noteData);
+
+					initNoteContainer();
+					// 默认选择第一个
+					if (noteData.length > 0) {
+						document.getElementById("noteInput").value =
+							noteData[0].name + " " + noteData[0]["chinese-name"];
+						showNote();
+					}
+
+				} catch (e) {
+
+					console.error(e);
+
+					alert("读取 note.json 失败：" + e.message);
+
+				}
+
+			}
+
+			function initNoteContainer() {
+
+				const container = document.getElementById("noteContainer");
+
+				container.innerHTML = `
+			
+			    <div style="
+			        display:flex;
+			        align-items:center;
+			        width:100%;
+			        margin:15px 0;
+			        padding:10px;
+			        background:#f4f4f4;
+			        border-radius:8px;
+			        box-sizing:border-box;
+			    ">
+			
+			        <div style="position:relative;">
+			
+			            <input
+			                id="noteInput"
+			                placeholder="请选择船公司"
+			                autocomplete="off"
+			                style="width:220px;"
+			            >
+			
+			            <div
+			                id="noteList"
+			                style="
+			                    display:none;
+			                    position:absolute;
+			                    left:0;
+			                    top:100%;
+			                    width:220px;
+			                    max-height:250px;
+			                    overflow-y:auto;
+			                    background:#fff;
+			                    border:1px solid #ccc;
+			                    z-index:999;
+			                ">
+			            </div>
+			
+			        </div>
+			
+			        <div
+			            id="noteText"
+			            style="
+			                display:flex;
+			                overflow-x:auto;
+			                white-space:nowrap;
+			                margin-left:20px;
+			                gap:10px;
+			                flex:1;
+			            ">
+			        </div>
+			
+			    </div>
+			    `;
+
+				const input = document.getElementById("noteInput");
+
+				input.addEventListener("click", function() {
+
+					renderNoteList(true);
+
+					setTimeout(() => this.select(), 0);
+
+				});
+
+				input.addEventListener("focus", function() {
+
+					renderNoteList(true);
+
+					setTimeout(() => this.select(), 0);
+
+				});
+
+				input.addEventListener("input", function() {
+
+					renderNoteList(false);
+
+					// 输入为空时立即恢复默认提醒
+					if (this.value.trim() === "") {
+						showNote();
+					}
+
+				});
+
+			}
+
+			function renderNoteList(showAll = false) {
+
+				const keyword = showAll ?
+					"" :
+					document.getElementById("noteInput").value.toLowerCase();
+
+				const list = document.getElementById("noteList");
+
+				list.innerHTML = "";
+
+				list.style.display = "block";
+
+				noteData
+					.slice(1)
+					.filter(item => {
+
+						if (showAll) return true;
+
+						const txt =
+							(item.name + " " + item["chinese-name"]).toLowerCase();
+
+						return txt.includes(keyword);
+
+					})
+					.forEach(item => {
+
+
+						const div = document.createElement("div");
+
+						div.innerHTML = item.name + " " + item["chinese-name"];
+
+						div.style.cssText = `
+			                padding:8px;
+			                cursor:pointer;
+			            `;
+
+						div.onmouseenter = () => div.style.background = "#eee";
+						div.onmouseleave = () => div.style.background = "#fff";
+
+						div.onclick = function() {
+
+							document.getElementById("noteInput").value = this.innerHTML;
+
+							list.style.display = "none";
+
+							showNote();
+
+						};
+
+						list.appendChild(div);
+
+					});
+
+			}
+
+			function showNote() {
+
+				const value = document.getElementById("noteInput").value.trim();
+
+				let obj;
+
+				if (value === "") {
+
+					obj = noteData[0];
+
+				} else {
+
+					obj = noteData.find(item =>
+						value === item.name + " " + item["chinese-name"]
+					);
+
+				}
+
+				const note = document.getElementById("noteText");
+
+				note.innerHTML = "";
+
+				if (!obj) return;
+
+				Object.values(obj.text).forEach(text => {
+
+					const div = document.createElement("div");
+
+					div.className = "note-item";
+
+					div.innerText = text;
+
+					note.appendChild(div);
+
+				});
+
 			}
 
 
@@ -1093,6 +1312,27 @@
 					syncPackageCalculators();
 				}
 			});
+			initNoteContainer();
+
+			document.addEventListener("click", function(e) {
+
+				const input = document.getElementById("noteInput");
+
+				const list = document.getElementById("noteList");
+
+				if (
+					input &&
+					list &&
+					e.target !== input &&
+					!list.contains(e.target)
+				) {
+
+					list.style.display = "none";
+
+				}
+
+			});
+			loadNoteData();
 		</script>
 
 	</body>
