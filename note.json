@@ -1,7 +1,7 @@
 [
     {
-        "name": "默认",
-        "chinese-name": "默认",
+        "name": "",
+        "chinese-name": "",
         "text": {
             "1": "默认提醒A",
             "2": "默认提醒B"
