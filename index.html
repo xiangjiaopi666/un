@@ -101,6 +101,27 @@
 				background: #4CAF50;
 				color: white;
 			}
+			.note-item{
+			    flex: none;
+			
+			    display: inline-flex;
+			    align-items: center;
+			    justify-content: center;
+			
+			    height: 36px;
+			    padding: 0 14px;
+			    box-sizing: border-box;
+			
+			    background: #f8fbff;
+			    border-left: 4px solid #409EFF;
+			    border-radius: 6px;
+			
+			    white-space: nowrap;
+			
+			    font-size: 14px;
+			    line-height: 1;
+			    font-family: "Microsoft YaHei","PingFang SC","Segoe UI",Arial,sans-serif;
+			}
 
 			@keyframes flashCell {
 				0% {
@@ -908,7 +929,19 @@
 			                id="noteInput"
 			                placeholder="请选择船公司"
 			                autocomplete="off"
-			                style="width:220px;"
+			                style="
+			                    width:220px;
+			                    height:36px;
+			                    padding:0 12px;
+			                    box-sizing:border-box;
+			                    border:1px solid #b7d8ff;
+			                    border-radius:5px;
+			                    background:#eef7ff;
+			                    color:#333;
+			                    font-size:14px;
+			                    outline:none;
+			                    transition:.2s;
+			                "
 			            >
 			
 			            <div
@@ -917,12 +950,14 @@
 			                    display:none;
 			                    position:absolute;
 			                    left:0;
-			                    top:100%;
+			                    top:40px;
 			                    width:220px;
 			                    max-height:250px;
 			                    overflow-y:auto;
-			                    background:#fff;
-			                    border:1px solid #ccc;
+			                    background:#eef7ff;
+			                    border:1px solid #b7d8ff;
+			                    border-radius:5px;
+			                    box-shadow:0 4px 12px rgba(0,0,0,.12);
 			                    z-index:999;
 			                ">
 			            </div>
@@ -1007,12 +1042,20 @@
 						div.innerHTML = item.name + " " + item["chinese-name"];
 
 						div.style.cssText = `
-			                padding:8px;
-			                cursor:pointer;
-			            `;
+						    padding:8px 12px;
+						    cursor:pointer;
+						    border-radius:8px;
+						    margin:4px;
+						    transition:.15s;
+						`;
 
-						div.onmouseenter = () => div.style.background = "#eee";
-						div.onmouseleave = () => div.style.background = "#fff";
+						div.onmouseenter = () => {
+						    div.style.background = "#cfe8ff";
+						};
+						
+						div.onmouseleave = () => {
+						    div.style.background = "transparent";
+						};
 
 						div.onclick = function() {
 
