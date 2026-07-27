@@ -16,14 +16,22 @@
         "name": "HLC",
         "chinese-name": "赫伯罗特",
         "text": {
-            "1": "45GP=40HQ",
-            "2": "45RT=40RH",
+            "1": "45GP=40HQ  45RT=40RH",
+            "2": "TECH NAME 是纯化学名",
 			"3": "一柜一表"
         }
     },
     {
         "name": "HMM",
         "chinese-name": "现代商船",
+        "text": {
+            "1": "没有40GP,只有40HQ",
+			"2": "舱单英文名为托书的货物全名"
+        }
+    },
+    {
+        "name": "ZIM",
+        "chinese-name": "以星",
         "text": {
             "1": "没有40GP,只有40HQ"
         }
