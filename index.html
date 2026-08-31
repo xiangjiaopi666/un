@@ -77,6 +77,11 @@
 				color: black;
 			}
 
+			.copy-btn.state-flash {
+				background-color: #FFD700;
+				color: black;
+			}
+
 			.copy-btn:disabled {
 				opacity: 1;
 				cursor: default;
@@ -101,26 +106,27 @@
 				background: #4CAF50;
 				color: white;
 			}
-			.note-item{
-			    flex: none;
-			
-			    display: inline-flex;
-			    align-items: center;
-			    justify-content: center;
-			
-			    height: 36px;
-			    padding: 0 14px;
-			    box-sizing: border-box;
-			
-			    background: #f8fbff;
-			    border-left: 4px solid #409EFF;
-			    border-radius: 6px;
-			
-			    white-space: nowrap;
-			
-			    font-size: 14px;
-			    line-height: 1;
-			    font-family: "Microsoft YaHei","PingFang SC","Segoe UI",Arial,sans-serif;
+
+			.note-item {
+				flex: none;
+
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+
+				height: 36px;
+				padding: 0 14px;
+				box-sizing: border-box;
+
+				background: #f8fbff;
+				border-left: 4px solid #409EFF;
+				border-radius: 6px;
+
+				white-space: nowrap;
+
+				font-size: 14px;
+				line-height: 1;
+				font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
 			}
 
 			@keyframes flashCell {
@@ -737,184 +743,325 @@
 				unInput.focus();
 			}
 
-			// 渲染所有搜索结果（历史+当前）
+			// ==========================================================
+			// 渲染所有搜索结果（历史 + 当前）
+			// ==========================================================
 			function renderResults() {
+
 				const tbody = document.getElementById('tableBody');
+
 				tbody.innerHTML = "";
-			
+
+
 				searchHistory.forEach((resultSet, index) => {
-			
+
+
+					// ==================================================
+					// 不同搜索结果之间添加分隔行
+					// ==================================================
 					if (index > 0) {
+
 						const sepRow = document.createElement('tr');
+
 						const sepTd = document.createElement('td');
-						sepTd.colSpan = Object.keys(resultSet[0]).length;
+
+						sepTd.colSpan =
+							Object.keys(resultSet[0]).length;
+
 						sepTd.className = "separator";
+
 						sepRow.appendChild(sepTd);
+
 						tbody.appendChild(sepRow);
 					}
-			
+
+
+					// ==================================================
+					// 当前搜索结果
+					// ==================================================
 					resultSet.forEach(row => {
-			
+
+
 						const tr = document.createElement('tr');
+
 						const keys = Object.keys(row);
-			
-						// ==================== 数据 ====================
-						const classValue = String(row["Class"] || '').trim();
-						const secondaryRisk = String(row["Secondary Risk"] || '').trim();
-						const packingGroup = String(row["Packing Group"] || '').trim();
-			
-			
+
+
+						// ==================================================
+						// 获取数据
+						// ==================================================
+						const classValue =
+							String(row["Class"] || '').trim();
+
+						const secondaryRisk =
+							String(row["Secondary Risk"] || '').trim();
+
+						const packingGroup =
+							String(row["Packing Group"] || '').trim();
+
+
 						// ==================================================
 						// 严格判断危险品类别
 						//
-						// 例如：
-						// 3       → true
-						// 3/      → true
-						// 6.1/3   → true
-						// 3/8     → true
+						// 可以识别：
+						// 3
+						// 3/
+						// 6.1/3
+						// 3/8
+						// 8/3
 						//
-						// 3.1     → false
-						// 2.3     → false
-						// 8.1     → false
-						// 18      → false
+						// 不会识别：
+						// 3.1
+						// 2.3
+						// 8.1
+						// 2.8
+						// 18
 						// ==================================================
 						function hasClass(value, targetClass) {
-			
-							const str = String(value || '').trim();
-			
+
+							const str =
+								String(value || '').trim();
+
 							if (!str) {
 								return false;
 							}
-			
-							// 按 / 分隔危险品类别
-							const classes = str
+
+
+							// 按 / 分割危险品类别
+							const classes =
+								str
 								.split('/')
 								.map(item => item.trim());
-			
-							// 必须存在完整的目标类别
+
+
+							// 必须完整匹配
 							return classes.includes(targetClass);
 						}
-			
-			
-						// ==================== 标签 ====================
+
+
+						// ==================================================
+						// 所有标签
+						// ==================================================
 						const tags = [];
-			
-			
-						// ==================== 固体 / 液体判断 ====================
+
+
+						// ==================================================
+						// 固体 / 液体判断
+						// ==================================================
 						const properShippingName =
-							String(row["Proper Shipping Name"] || '').toUpperCase();
-			
-						if (properShippingName.includes('SOLID')) {
-			
+							String(
+								row["Proper Shipping Name"] || ''
+							).toUpperCase();
+
+
+						if (
+							properShippingName.includes('SOLID')
+						) {
+
 							tags.push({
 								text: '固体',
 								className: 'state-solid'
 							});
-			
-						} else if (properShippingName.includes('LIQUID')) {
-			
+
+
+						} else if (
+							properShippingName.includes('LIQUID')
+						) {
+
 							tags.push({
 								text: '液体',
 								className: 'state-liquid'
 							});
-			
+
+
 						} else {
-			
+
+
 							const limitedQty =
-								String(row["Limited Quantities"] || '')
+								String(
+									row["Limited Quantities"] || ''
+								)
 								.toUpperCase()
 								.replace(/\s/g, '');
-			
+
+
 							if (
 								limitedQty.includes('ML') ||
 								limitedQty.endsWith('L')
 							) {
-			
+
 								tags.push({
 									text: '液体',
 									className: 'state-liquid'
 								});
-			
+
+
 							} else if (
 								limitedQty.includes('KG') ||
 								limitedQty.endsWith('G')
 							) {
-			
+
 								tags.push({
 									text: '固体',
 									className: 'state-solid'
 								});
 							}
 						}
-			
-			
-						// ==================== 隔离判断 ====================
+
+
+						// ==================================================
+						// 隔离判断
 						//
-						// Class 或 Secondary Risk 中
-						// 存在独立的类别 8
-						//
+						// Class 或 Secondary Risk
+						// 存在独立类别 8
+						// ==================================================
 						if (
 							hasClass(classValue, '8') ||
 							hasClass(secondaryRisk, '8')
 						) {
-			
+
 							tags.push({
+
 								text: '隔离，不能用【1A1】等金属包装',
+
 								className: 'state-isolate'
 							});
 						}
-			
-			
-						// ==================== Flash Point 判断 ====================
+
+
+						// ==================================================
+						// Flash Point 判断
 						//
-						// Class 或 Secondary Risk 中
-						// 存在独立的类别 3
-						//
+						// Class 或 Secondary Risk
+						// 存在独立类别 3
+						// ==================================================
 						if (
 							hasClass(classValue, '3') ||
 							hasClass(secondaryRisk, '3')
 						) {
-			
-							if (packingGroup === 'II') {
-			
+
+
+							// ==============================================
+							// Packing Group I
+							// ==============================================
+							if (packingGroup === 'I') {
+
+
+
+
+
+								// Proper Shipping Name
+								// 增加“闪点”标签
 								tags.push({
+
+									text: '有闪点',
+
+									className: 'state-flash'
+								});
+
+
+							}
+
+
+							// ==============================================
+							// Packing Group II
+							// ==============================================
+							if (packingGroup === 'II') {
+
+
+								// Flash Point 标签
+								tags.push({
+
 									text: '18C',
+
 									className: 'state-flash-point'
 								});
-			
-							} else if (packingGroup === 'III') {
-			
+
+
+								// Proper Shipping Name
+								// 增加“闪点”标签
 								tags.push({
+
+									text: '有闪点',
+
+									className: 'state-flash'
+								});
+
+
+							}
+
+
+							// ==============================================
+							// Packing Group III
+							// ==============================================
+							else if (packingGroup === 'III') {
+
+
+								// Flash Point 标签
+								tags.push({
+
 									text: '34C',
+
 									className: 'state-flash-point'
+								});
+
+
+								// Proper Shipping Name
+								// 增加“闪点”标签
+								tags.push({
+
+									text: '有闪点',
+
+									className: 'state-flash'
 								});
 							}
 						}
-			
-			
-						// ==================== 生成每一列 ====================
+
+
+						// ==================================================
+						// 生成每一列
+						// ==================================================
 						keys.forEach((key, idx) => {
-			
+
+
 							const val = row[key];
-			
-							const td = document.createElement('td');
-			
-							const div = document.createElement('div');
-			
-							div.className = 'data-cell';
-							div.style.display = 'flex';
-							div.style.justifyContent = 'center';
-							div.style.alignItems = 'center';
-			
-							const span = document.createElement('span');
-			
-							span.innerText = val || '';
-			
+
+
+							const td =
+								document.createElement('td');
+
+
+							const div =
+								document.createElement('div');
+
+
+							div.className =
+								'data-cell';
+
+							div.style.display =
+								'flex';
+
+							div.style.justifyContent =
+								'center';
+
+							div.style.alignItems =
+								'center';
+
+
+							const span =
+								document.createElement('span');
+
+
+							// 空数据不显示 undefined / null
+							span.innerText =
+								val || '';
+
+
 							div.appendChild(span);
-			
-			
+
+
 							// ==================================================
-							// 复制按钮
+							// 原数据不为空时显示复制按钮
 							// ==================================================
 							if (
 								val !== null &&
@@ -922,150 +1069,277 @@
 								String(val).trim() !== "" &&
 								idx !== keys.length - 1
 							) {
-			
-								const btn = document.createElement('button');
-			
-								btn.className = 'copy-btn';
-								btn.innerText = '复制';
-			
+
+
+								const btn =
+									document.createElement('button');
+
+
+								btn.className =
+									'copy-btn';
+
+								btn.innerText =
+									'复制';
+
+
 								btn.onclick = () => {
-			
-									navigator.clipboard.writeText(String(val))
+
+
+									navigator.clipboard
+										.writeText(String(val))
 										.then(() => {
-			
-											td.classList.add('flash-cell');
-			
+
+
+											td.classList.add(
+												'flash-cell'
+											);
+
+
 											setTimeout(
-												() => td.classList.remove('flash-cell'),
+												() => {
+													td.classList.remove(
+														'flash-cell'
+													);
+												},
 												500
 											);
-			
+
 										});
 								};
-			
-			
-								const btnRow = document.createElement('div');
-			
-								btnRow.className = 'btn-row';
-			
+
+
+								const btnRow =
+									document.createElement('div');
+
+
+								btnRow.className =
+									'btn-row';
+
+
 								btnRow.appendChild(btn);
-			
-			
+
+
 								// ==================================================
 								// Proper Shipping Name
-								// 固体 / 液体
+								//
+								// 第一行：
+								// 固体 / 液体 / 闪点
+								//
+								// 第二行：
+								// 隔离
 								// ==================================================
-								if (key === "Proper Shipping Name") {
-			
+								if (
+									key === "Proper Shipping Name"
+								) {
+
+
+									// ==============================================
+									// 固体 / 液体 / 闪点
+									// ==============================================
 									tags
 										.filter(tag =>
-											tag.className === 'state-solid' ||
-											tag.className === 'state-liquid'
+											tag.className ===
+											'state-solid' ||
+
+											tag.className ===
+											'state-liquid' ||
+
+											tag.className ===
+											'state-flash'
 										)
 										.forEach(tagInfo => {
-			
+
+
 											const tagBtn =
-												document.createElement('button');
-			
+												document.createElement(
+													'button'
+												);
+
+
 											tagBtn.className =
 												`copy-btn ${tagInfo.className}`;
-			
+
+
 											tagBtn.innerText =
 												tagInfo.text;
-			
-											tagBtn.disabled = true;
-			
-											btnRow.appendChild(tagBtn);
+
+
+											tagBtn.disabled =
+												true;
+
+
+											btnRow.appendChild(
+												tagBtn
+											);
 										});
-			
-			
-									// ==================================================
+
+
+									// ==============================================
 									// 隔离标签
+									//
 									// 单独换行
-									// ==================================================
+									// ==============================================
 									const isolateTags =
 										tags.filter(tag =>
-											tag.className === 'state-isolate'
+											tag.className ===
+											'state-isolate'
 										);
-			
-									if (isolateTags.length > 0) {
-			
+
+
+									if (
+										isolateTags.length > 0
+									) {
+
+
 										const isolateRow =
-											document.createElement('div');
-			
-										isolateRow.className = 'btn-row';
-			
-										isolateRow.style.width = '100%';
-										isolateRow.style.marginTop = '4px';
-			
-										isolateTags.forEach(tagInfo => {
-			
-											const tagBtn =
-												document.createElement('button');
-			
-											tagBtn.className =
-												`copy-btn ${tagInfo.className}`;
-			
-											tagBtn.innerText =
-												tagInfo.text;
-			
-											tagBtn.disabled = true;
-			
-											isolateRow.appendChild(tagBtn);
-										});
-			
-										div.appendChild(isolateRow);
+											document.createElement(
+												'div'
+											);
+
+
+										isolateRow.className =
+											'btn-row';
+
+
+										isolateRow.style.width =
+											'100%';
+
+
+										isolateRow.style.marginTop =
+											'4px';
+
+
+										isolateTags.forEach(
+											tagInfo => {
+
+
+												const tagBtn =
+													document.createElement(
+														'button'
+													);
+
+
+												tagBtn.className =
+													`copy-btn ${tagInfo.className}`;
+
+
+												tagBtn.innerText =
+													tagInfo.text;
+
+
+												tagBtn.disabled =
+													true;
+
+
+												isolateRow.appendChild(
+													tagBtn
+												);
+											}
+										);
+
+
+										div.appendChild(
+											isolateRow
+										);
 									}
 								}
-			
-			
-								div.appendChild(btnRow);
+
+
+								div.appendChild(
+									btnRow
+								);
 							}
-			
-			
+
+
 							// ==================================================
 							// Flash Point
-							// 18C / 34C
+							//
+							// 原 Flash Point 有数据：
+							// 25C [18C]
+							//
+							// 原 Flash Point 没有数据：
+							// [18C]
+							//
+							// 18C / 34C 使用和隔离完全相同的样式
 							// ==================================================
-							if (key === "Flash Point") {
-			
+							if (
+								key === "Flash Point"
+							) {
+
+
 								const flashPointTags =
 									tags.filter(tag =>
-										tag.className === 'state-flash-point'
+										tag.className ===
+										'state-flash-point'
 									);
-			
-								if (flashPointTags.length > 0) {
-			
-									flashPointTags.forEach(tagInfo => {
-			
-										const tagBtn =
-											document.createElement('button');
-			
-										// 使用和隔离标签完全相同的样式
-										tagBtn.className =
-											'copy-btn state-isolate';
-			
-										tagBtn.innerText =
-											tagInfo.text;
-			
-										tagBtn.disabled = true;
-			
-										div.appendChild(tagBtn);
-									});
+
+
+								if (
+									flashPointTags.length > 0
+								) {
+
+
+									flashPointTags.forEach(
+										tagInfo => {
+
+
+											const tagBtn =
+												document.createElement(
+													'button'
+												);
+
+
+											// ==========================================
+											// 重点：
+											// 直接使用 state-isolate
+											// 因此和隔离标签完全一样
+											// ==========================================
+											tagBtn.className =
+												'copy-btn state-isolate';
+
+
+											tagBtn.innerText =
+												tagInfo.text;
+
+
+											tagBtn.disabled =
+												true;
+
+
+											div.appendChild(
+												tagBtn
+											);
+										}
+									);
 								}
 							}
-			
-			
-							td.appendChild(div);
-							tr.appendChild(td);
-			
+
+
+							// ==================================================
+							// 添加单元格
+							// ==================================================
+							td.appendChild(
+								div
+							);
+
+							tr.appendChild(
+								td
+							);
+
 						});
-			
-						tbody.appendChild(tr);
+
+
+						// ==================================================
+						// 添加行
+						// ==================================================
+						tbody.appendChild(
+							tr
+						);
+
 					});
 				});
 			}
-			
+
 			async function loadNoteData() {
 
 				try {
@@ -1083,8 +1357,8 @@
 					initNoteContainer();
 					// 默认选择第一个
 					if (noteData.length > 0) {
-					    // 不给输入框赋值，只显示默认提醒
-					    showNote();
+						// 不给输入框赋值，只显示默认提醒
+						showNote();
 					}
 
 				} catch (e) {
@@ -1241,11 +1515,11 @@
 						`;
 
 						div.onmouseenter = () => {
-						    div.style.background = "#cfe8ff";
+							div.style.background = "#cfe8ff";
 						};
-						
+
 						div.onmouseleave = () => {
-						    div.style.background = "transparent";
+							div.style.background = "transparent";
 						};
 
 						div.onclick = function() {
