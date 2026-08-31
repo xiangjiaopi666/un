@@ -838,14 +838,17 @@
 									}
 
 									// 隔离判断
-									if (
-										String(row["Class"] || '').trim() === '8'
-									) {
-
-										tags.push({
-											text: '隔离，不能用【1A1】等金属包装',
-											className: 'state-isolate'
-										});
+									const classValue = String(row["Class"] || '').trim();
+									const secondaryRisk = String(row["Secondary Risk"] || '').trim();
+									
+									const containsClass8 = /(^|[,\s/])8(?:[,\s/]|$)/.test(classValue);
+									const containsSecondaryRisk8 = /(^|[,\s/])8(?:[,\s/]|$)/.test(secondaryRisk);
+									
+									if (containsClass8 || containsSecondaryRisk8) {
+									    tags.push({
+									        text: '隔离，不能用【1A1】等金属包装',
+									        className: 'state-isolate'
+									    });
 									}
 
 									// 统一生成按钮
