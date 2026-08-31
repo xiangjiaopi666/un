@@ -741,8 +741,9 @@
 			function renderResults() {
 				const tbody = document.getElementById('tableBody');
 				tbody.innerHTML = "";
-
+			
 				searchHistory.forEach((resultSet, index) => {
+			
 					if (index > 0) {
 						const sepRow = document.createElement('tr');
 						const sepTd = document.createElement('td');
@@ -751,133 +752,320 @@
 						sepRow.appendChild(sepTd);
 						tbody.appendChild(sepRow);
 					}
-
+			
 					resultSet.forEach(row => {
+			
 						const tr = document.createElement('tr');
 						const keys = Object.keys(row);
+			
+						// ==================== 数据 ====================
+						const classValue = String(row["Class"] || '').trim();
+						const secondaryRisk = String(row["Secondary Risk"] || '').trim();
+						const packingGroup = String(row["Packing Group"] || '').trim();
+			
+			
+						// ==================================================
+						// 严格判断危险品类别
+						//
+						// 例如：
+						// 3       → true
+						// 3/      → true
+						// 6.1/3   → true
+						// 3/8     → true
+						//
+						// 3.1     → false
+						// 2.3     → false
+						// 8.1     → false
+						// 18      → false
+						// ==================================================
+						function hasClass(value, targetClass) {
+			
+							const str = String(value || '').trim();
+			
+							if (!str) {
+								return false;
+							}
+			
+							// 按 / 分隔危险品类别
+							const classes = str
+								.split('/')
+								.map(item => item.trim());
+			
+							// 必须存在完整的目标类别
+							return classes.includes(targetClass);
+						}
+			
+			
+						// ==================== 标签 ====================
+						const tags = [];
+			
+			
+						// ==================== 固体 / 液体判断 ====================
+						const properShippingName =
+							String(row["Proper Shipping Name"] || '').toUpperCase();
+			
+						if (properShippingName.includes('SOLID')) {
+			
+							tags.push({
+								text: '固体',
+								className: 'state-solid'
+							});
+			
+						} else if (properShippingName.includes('LIQUID')) {
+			
+							tags.push({
+								text: '液体',
+								className: 'state-liquid'
+							});
+			
+						} else {
+			
+							const limitedQty =
+								String(row["Limited Quantities"] || '')
+								.toUpperCase()
+								.replace(/\s/g, '');
+			
+							if (
+								limitedQty.includes('ML') ||
+								limitedQty.endsWith('L')
+							) {
+			
+								tags.push({
+									text: '液体',
+									className: 'state-liquid'
+								});
+			
+							} else if (
+								limitedQty.includes('KG') ||
+								limitedQty.endsWith('G')
+							) {
+			
+								tags.push({
+									text: '固体',
+									className: 'state-solid'
+								});
+							}
+						}
+			
+			
+						// ==================== 隔离判断 ====================
+						//
+						// Class 或 Secondary Risk 中
+						// 存在独立的类别 8
+						//
+						if (
+							hasClass(classValue, '8') ||
+							hasClass(secondaryRisk, '8')
+						) {
+			
+							tags.push({
+								text: '隔离，不能用【1A1】等金属包装',
+								className: 'state-isolate'
+							});
+						}
+			
+			
+						// ==================== Flash Point 判断 ====================
+						//
+						// Class 或 Secondary Risk 中
+						// 存在独立的类别 3
+						//
+						if (
+							hasClass(classValue, '3') ||
+							hasClass(secondaryRisk, '3')
+						) {
+			
+							if (packingGroup === 'II') {
+			
+								tags.push({
+									text: '18C',
+									className: 'state-flash-point'
+								});
+			
+							} else if (packingGroup === 'III') {
+			
+								tags.push({
+									text: '34C',
+									className: 'state-flash-point'
+								});
+							}
+						}
+			
+			
+						// ==================== 生成每一列 ====================
 						keys.forEach((key, idx) => {
+			
 							const val = row[key];
+			
 							const td = document.createElement('td');
+			
 							const div = document.createElement('div');
+			
 							div.className = 'data-cell';
 							div.style.display = 'flex';
 							div.style.justifyContent = 'center';
 							div.style.alignItems = 'center';
+			
 							const span = document.createElement('span');
-							span.innerText = val;
+			
+							span.innerText = val || '';
+			
 							div.appendChild(span);
-
-							if (val !== null && val.trim() !== "" && idx !== keys.length - 1) {
-
+			
+			
+							// ==================================================
+							// 复制按钮
+							// ==================================================
+							if (
+								val !== null &&
+								val !== undefined &&
+								String(val).trim() !== "" &&
+								idx !== keys.length - 1
+							) {
+			
 								const btn = document.createElement('button');
+			
 								btn.className = 'copy-btn';
 								btn.innerText = '复制';
-
+			
 								btn.onclick = () => {
-									navigator.clipboard.writeText(val).then(() => {
-										td.classList.add('flash-cell');
-										setTimeout(() => td.classList.remove('flash-cell'),
-											500);
-									});
+			
+									navigator.clipboard.writeText(String(val))
+										.then(() => {
+			
+											td.classList.add('flash-cell');
+			
+											setTimeout(
+												() => td.classList.remove('flash-cell'),
+												500
+											);
+			
+										});
 								};
-
+			
+			
 								const btnRow = document.createElement('div');
+			
 								btnRow.className = 'btn-row';
-
+			
 								btnRow.appendChild(btn);
-
-								// Proper Shipping Name 显示状态标签
+			
+			
+								// ==================================================
+								// Proper Shipping Name
+								// 固体 / 液体
+								// ==================================================
 								if (key === "Proper Shipping Name") {
-
-									const tags = [];
-
-									const upperVal = String(val).toUpperCase();
-
-									// 固体/液体判断
-									if (upperVal.includes('SOLID')) {
-
-										tags.push({
-											text: '固体',
-											className: 'state-solid'
+			
+									tags
+										.filter(tag =>
+											tag.className === 'state-solid' ||
+											tag.className === 'state-liquid'
+										)
+										.forEach(tagInfo => {
+			
+											const tagBtn =
+												document.createElement('button');
+			
+											tagBtn.className =
+												`copy-btn ${tagInfo.className}`;
+			
+											tagBtn.innerText =
+												tagInfo.text;
+			
+											tagBtn.disabled = true;
+			
+											btnRow.appendChild(tagBtn);
 										});
-
-									} else if (upperVal.includes('LIQUID')) {
-
-										tags.push({
-											text: '液体',
-											className: 'state-liquid'
+			
+			
+									// ==================================================
+									// 隔离标签
+									// 单独换行
+									// ==================================================
+									const isolateTags =
+										tags.filter(tag =>
+											tag.className === 'state-isolate'
+										);
+			
+									if (isolateTags.length > 0) {
+			
+										const isolateRow =
+											document.createElement('div');
+			
+										isolateRow.className = 'btn-row';
+			
+										isolateRow.style.width = '100%';
+										isolateRow.style.marginTop = '4px';
+			
+										isolateTags.forEach(tagInfo => {
+			
+											const tagBtn =
+												document.createElement('button');
+			
+											tagBtn.className =
+												`copy-btn ${tagInfo.className}`;
+			
+											tagBtn.innerText =
+												tagInfo.text;
+			
+											tagBtn.disabled = true;
+			
+											isolateRow.appendChild(tagBtn);
 										});
-
-									} else {
-
-										const limitedQty =
-											String(row["Limited Quantities"] || '')
-											.toUpperCase()
-											.replace(/\s/g, '');
-
-										if (
-											limitedQty.includes('ML') ||
-											limitedQty.endsWith('L')
-										) {
-
-											tags.push({
-												text: '液体',
-												className: 'state-liquid'
-											});
-
-										} else if (
-											limitedQty.includes('KG') ||
-											limitedQty.endsWith('G')
-										) {
-
-											tags.push({
-												text: '固体',
-												className: 'state-solid'
-											});
-										}
+			
+										div.appendChild(isolateRow);
 									}
-
-									// 隔离判断
-									const classValue = String(row["Class"] || '').trim();
-									const secondaryRisk = String(row["Secondary Risk"] || '').trim();
-									
-									const containsClass8 = /(^|[,\s/])8(?:[,\s/]|$)/.test(classValue);
-									const containsSecondaryRisk8 = /(^|[,\s/])8(?:[,\s/]|$)/.test(secondaryRisk);
-									
-									if (containsClass8 || containsSecondaryRisk8) {
-									    tags.push({
-									        text: '隔离，不能用【1A1】等金属包装',
-									        className: 'state-isolate'
-									    });
-									}
-
-									// 统一生成按钮
-									tags.forEach(tagInfo => {
-
-										const tagBtn = document.createElement('button');
-
-										tagBtn.className =
-											`copy-btn ${tagInfo.className}`;
-
-										tagBtn.innerText =
-											tagInfo.text;
-
-										tagBtn.disabled = true;
-
-										btnRow.appendChild(tagBtn);
-									});
 								}
-
+			
+			
 								div.appendChild(btnRow);
 							}
-
+			
+			
+							// ==================================================
+							// Flash Point
+							// 18C / 34C
+							// ==================================================
+							if (key === "Flash Point") {
+			
+								const flashPointTags =
+									tags.filter(tag =>
+										tag.className === 'state-flash-point'
+									);
+			
+								if (flashPointTags.length > 0) {
+			
+									flashPointTags.forEach(tagInfo => {
+			
+										const tagBtn =
+											document.createElement('button');
+			
+										// 使用和隔离标签完全相同的样式
+										tagBtn.className =
+											'copy-btn state-isolate';
+			
+										tagBtn.innerText =
+											tagInfo.text;
+			
+										tagBtn.disabled = true;
+			
+										div.appendChild(tagBtn);
+									});
+								}
+							}
+			
+			
 							td.appendChild(div);
 							tr.appendChild(td);
+			
 						});
+			
 						tbody.appendChild(tr);
 					});
 				});
 			}
+			
 			async function loadNoteData() {
 
 				try {
